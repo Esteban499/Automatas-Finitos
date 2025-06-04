@@ -26,16 +26,14 @@ public class DotParser {
                 continue;
             }
 
-            System.out.println(linea);
-
-            // Estado final: node [shape = doublecircle]; q3;
+            // Estados finales: node [shape = doublecircle]; q3 q4 q5;
             if (linea.startsWith("node [shape = doublecircle];")) {
-                System.out.println("Entre");
-                String[] partes = linea.split(";");
-                for (int i = 1; i < partes.length; i++) {
-                    String nombre = partes[i].trim();
-                    estadosFinalesTemp.add(nombre);
-                    System.out.println("estado final: " + estadosFinalesTemp);
+                String estadosStr = linea.replace("node [shape = doublecircle];", "").trim().replace(";", "");
+                String[] estados = estadosStr.split("\\s+"); // dividir por uno o más espacios
+                for (String nombre : estados) {
+                    if (!nombre.isEmpty()) {
+                        estadosFinalesTemp.add(nombre);
+                    }
                 }
                 continue;
             }

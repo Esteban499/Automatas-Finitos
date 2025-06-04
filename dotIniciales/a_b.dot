@@ -1,0 +1,13 @@
+digraph a_b {
+	node [fontname="Helvetica,Arial,sans-serif"]
+	edge [fontname="Helvetica,Arial,sans-serif"]
+	rankdir=LR;
+	node [shape = doublecircle]; q2 ;
+	node [shape = circle];
+	inic[shape=point];
+	inic -> q0;
+	q0 -> q1 [label = "a"];
+	q1 -> q1 [label = "b"];
+	q1 -> q2 [label = "b"];
+}
+
