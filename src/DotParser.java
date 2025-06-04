@@ -19,7 +19,6 @@ public class DotParser {
 
             // Saltar líneas decorativas
             if (linea.startsWith("digraph") ||
-                    linea.startsWith("node [") ||
                     linea.startsWith("edge [") ||
                     linea.equals("rankdir=LR;") ||
                     linea.equals("node [shape = circle];") ||
@@ -27,18 +26,22 @@ public class DotParser {
                 continue;
             }
 
+            System.out.println(linea);
+
             // Estado final: node [shape = doublecircle]; q3;
             if (linea.startsWith("node [shape = doublecircle];")) {
+                System.out.println("Entre");
                 String[] partes = linea.split(";");
                 for (int i = 1; i < partes.length; i++) {
                     String nombre = partes[i].trim();
                     estadosFinalesTemp.add(nombre);
+                    System.out.println("estado final: " + estadosFinalesTemp);
                 }
                 continue;
             }
 
             // Estado inicial: inic -> q0;
-            if (linea.startsWith("inic->")) {
+            if (linea.startsWith("inic -> ")) {
                 String destino = linea.split("->")[1].replace(";", "").trim();
                 Estado inicial = mapaEstados.computeIfAbsent(destino, k -> new Estado(Integer.parseInt(k.substring(1))));
                 afn.setEstadoInicial(inicial);
