@@ -10,5 +10,6 @@ digraph a_b_c {
 	q1 -> q2 [label = "a|b|c"];
 	q2 -> q3 [label = "a|b|c"];
 	q3 -> q1 [label = "a|b|c"];
+
 }
 

@@ -4,14 +4,20 @@ import java.util.*;
 
 public class Main {
 
+    // Scanner para leer entradas del usuario
     static Scanner scanner = new Scanner(System.in);
+
+    // Mapa para almacenar los AFNs cargados con un nombre identificador
     static Map<String, AFN> automatas = new LinkedHashMap<>();
+
+    // Contador incremental para asignar nombres únicos a los AFNs
     static int contadorAFN = 1;
 
     public static void main(String[] args) throws IOException, InterruptedException {
         int opcion;
         do {
             limpiarPantalla();
+            // Menú principal
             System.out.println("--- Menú de Autómatas Finitos No Deterministas (AFN) ---");
             System.out.println("1. Cargar AFN desde archivo DOT");
             System.out.println("2. Mostrar AFNs cargados (genera DOT + PNG)");
@@ -21,24 +27,25 @@ public class Main {
             System.out.print("Seleccione una opción: ");
             opcion = leerEntero();
 
+            // Switch de opciones
             switch (opcion) {
                 case 1:
                     limpiarPantalla();
-                    cargarAFN();
+                    cargarAFN();   // Cargar AFN desde archivo
                     pausar();
                     break;
                 case 2:
                     limpiarPantalla();
-                    mostrarAFNs();
+                    mostrarAFNs();  // Mostrar todos los AFNs cargados
                     pausar();
                     break;
                 case 3:
                     limpiarPantalla();
-                    submenuOperaciones();
+                    submenuOperaciones(); // Submenú con operaciones (unión, concat., etc.)
                     pausar();
                     break;
                 case 4:
-                    convertirAFNaAFD();
+                    convertirAFNaAFD(); // Convertir un AFN a AFD
                     break;
                 case 0:
                     System.out.println("Saliendo del programa...");
@@ -47,23 +54,25 @@ public class Main {
                     System.out.println("Opción inválida. Intente de nuevo.");
                     break;
             }
-        } while (opcion != 0);
+        } while (opcion != 0); // Repetir hasta que el usuario elija salir
     }
 
+    // Carga un AFN desde un archivo DOT en la carpeta indicada
     private static void cargarAFN() {
         System.out.print("Ingrese el nombre del archivo DOT (en carpeta assets/, por ejemplo: a_b_c.dot): ");
         String archivo = scanner.nextLine().trim();
-        String ruta = "C:\\Users\\Santiago\\OneDrive\\Escritorio\\TP 2 - Teoria de la Computacion\\Automatas-Finitos\\dotIniciales\\" + archivo;
+        String ruta = "C:\\Users\\Gerfs\\OneDrive\\Escritorio\\Proyectos Teoria de la computacion\\Automatas\\Automatas-Finitos\\dotIniciales\\" + archivo;
         try {
             AFN afn = DotParser.leerDesdeArchivo(ruta);
-            String nombreAFN = "af" + contadorAFN++;
-            automatas.put(nombreAFN, afn);
+            String nombreAFN = "af" + contadorAFN++; // nombre único
+            automatas.put(nombreAFN, afn); // almacenar
             System.out.println("✔ AFN cargado como: " + nombreAFN + " = " + archivo);
         } catch (IOException e) {
             System.err.println("❌ Error al leer el archivo: " + e.getMessage());
         }
     }
 
+    // Genera el DOT y PNG para todos los AFNs cargados
     private static void mostrarAFNs() throws IOException, InterruptedException {
         if (automatas.isEmpty()) {
             System.out.println("No hay AFNs cargados.");
@@ -76,8 +85,8 @@ public class Main {
             String dotPath = "archivos_dot/" + nombre + ".dot";
             String pngPath = "automatas_png/" + nombre + ".png";
 
-            DotExporter.escribirAFN(afn, dotPath, nombre);
-            GraphvizExporter.generarImagen(dotPath, pngPath);
+            DotExporter.escribirAFN(afn, dotPath, nombre); // genera .dot
+            GraphvizExporter.generarImagen(dotPath, pngPath); // genera .png
 
             System.out.println("✅ Visualización generada para " + nombre + ":");
             System.out.println("   DOT: " + dotPath);
@@ -85,6 +94,7 @@ public class Main {
         }
     }
 
+    // Lectura robusta de enteros desde consola
     private static int leerEntero() {
         while (true) {
             try {
@@ -95,43 +105,193 @@ public class Main {
         }
     }
 
+    // Submenú con operaciones sobre AFNs
     private static void submenuOperaciones() throws IOException, InterruptedException {
         limpiarPantalla();
         int opcion;
         System.out.println("=== OPERACIONES CON AFN ===");
-        System.out.println("1. Unión (pendiente)");
+        System.out.println("1. Unión");
         System.out.println("2. Concatenación");
-        System.out.println("3. Clausura (pendiente)");
+        System.out.println("3. Clausura de Kleene");
         System.out.println("0. Volver al menú principal");
         System.out.print("Seleccione una opción: ");
         opcion = leerEntero();
 
         switch (opcion) {
-            case 1:
-                System.out.println("Funcionalidad de Unión: Pendiente de implementación.");
-                break;
-            case 2:
-                concatenarAFNs();
-                break;
-            case 3:
-                System.out.println("Funcionalidad de Clausura: Pendiente de implementación.");
-                break;
-            case 0:
-                break;
-            default:
-                System.out.println("Opción inválida.");
+            case 1: unirAFNs(); break;
+            case 2: concatenarAFNs(); break;
+            case 3: aplicarClausuraKleene(); break;
+            case 0: break;
+            default: System.out.println("Opción inválida.");
         }
     }
 
-
-
-
+    // Pausa la ejecución hasta que se presione Enter
     private static void pausar() {
         System.out.print("\nPresione Enter para continuar...");
         scanner.nextLine();
     }
 
+    // Permite concatenar dos AFNs existentes
     private static void concatenarAFNs() throws IOException, InterruptedException {
+        if (automatas.size() < 2) {
+            System.out.println("Se requieren al menos dos AFNs cargados.");
+            pausar();
+            return;
+        }
+
+        // Mostrar AFNs disponibles
+        System.out.println("AFNs disponibles:");
+        for (String nombre : automatas.keySet()) {
+            System.out.println("- " + nombre);
+        }
+
+        // Solicitar nombres de AFNs a concatenar
+        System.out.print("Nombre del primer AFN: ");
+        String nombre1 = scanner.nextLine();
+        System.out.print("Nombre del segundo AFN: ");
+        String nombre2 = scanner.nextLine();
+
+        AFN afn1 = automatas.get(nombre1);
+        AFN afn2 = automatas.get(nombre2);
+
+        if (afn1 == null || afn2 == null) {
+            System.out.println("Uno de los AFNs no existe.");
+            pausar();
+            return;
+        }
+
+        AFN copiaAFN2 = copiarAFN(afn2); // crear copia para no modificar el original
+        afn1.concatenarAFN(copiaAFN2);   // aplicar concatenación
+
+        // Guardar nuevo AFN resultante
+        String nombreResultado = nombre1 + "_concat_" + nombre2;
+        automatas.put(nombreResultado, afn1);
+
+        // Exportar visualización
+        String salidaDot = "archivos_dot/" + nombreResultado + ".dot";
+        String salidaPng = "automatas_png/" + nombreResultado + ".png";
+        DotExporter.escribirAFN(afn1, salidaDot, nombreResultado);
+        GraphvizExporter.generarImagen(salidaDot, salidaPng);
+
+        System.out.println("AFN concatenado generado como: " + nombreResultado);
+        pausar();
+    }
+
+    // Crea una copia profunda de un AFN
+    private static AFN copiarAFN(AFN original) {
+        AFN copia = new AFN();
+        Map<Estado, Estado> mapeo = new HashMap<>();
+
+        // Copiar estados
+        for (Estado est : original.estados) {
+            Estado nuevo = new Estado(est.id);
+            mapeo.put(est, nuevo);
+            copia.estados.add(nuevo);
+            if (est.equals(original.estadoInicial)) {
+                copia.estadoInicial = nuevo;
+            }
+        }
+
+        // Copiar estados finales
+        for (Estado ef : original.estadosFinales) {
+            copia.estadosFinales.add(mapeo.get(ef));
+        }
+
+        // Copiar transiciones
+        for (Transicion t : original.transiciones) {
+            Estado desde = mapeo.get(t.desde);
+            Estado hacia = mapeo.get(t.hacia);
+            copia.agregarTransicion(desde, t.simbolo, hacia);
+        }
+
+        // Copiar alfabeto
+        copia.alfabeto.addAll(original.alfabeto);
+
+        return copia;
+    }
+
+    // Convierte un AFN a AFD utilizando el algoritmo de subconjuntos
+    private static void convertirAFNaAFD() throws IOException, InterruptedException {
+        if (automatas.isEmpty()) {
+            System.out.println("No hay AFNs cargados.");
+            pausar();
+            return;
+        }
+
+        System.out.println("AFNs disponibles:");
+        for (String nombre : automatas.keySet()) {
+            System.out.println("- " + nombre);
+        }
+
+        System.out.print("Nombre del AFN a convertir: ");
+        String nombre = scanner.nextLine();
+        AFN afn = automatas.get(nombre);
+
+        if (afn == null) {
+            System.out.println("No existe ese AFN.");
+            pausar();
+            return;
+        }
+
+        // Conversión a AFD
+        AFD afd = afn.convertirADeterminista();
+
+
+        String nombreAFD = nombre + "_AFD";
+        String salidaDot = "archivos_dot/" + nombreAFD + ".dot";
+        String salidaPng = "automatas_png/" + nombreAFD + ".png";
+
+        DotExporter.escribirAFD(afd, salidaDot, nombreAFD);
+        GraphvizExporter.generarImagen(salidaDot, salidaPng);
+
+        System.out.println("✅ AFD generado como: " + nombreAFD);
+        System.out.println("   DOT: " + salidaDot);
+        System.out.println("   PNG: " + salidaPng);
+        pausar();
+    }
+
+    // Aplica la clausura de Kleene a un AFN seleccionado
+    private static void aplicarClausuraKleene() throws IOException, InterruptedException {
+        if (automatas.isEmpty()) {
+            System.out.println("No hay AFNs cargados.");
+            pausar();
+            return;
+        }
+
+        System.out.println("AFNs disponibles:");
+        for (String nombre : automatas.keySet()) {
+            System.out.println("- " + nombre);
+        }
+
+        System.out.print("Nombre del AFN para aplicar clausura de Kleene: ");
+        String nombre = scanner.nextLine();
+        AFN afnOriginal = automatas.get(nombre);
+
+        if (afnOriginal == null) {
+            System.out.println("No existe ese AFN.");
+            pausar();
+            return;
+        }
+
+        // Crear copia, aplicar operación, guardar y exportar
+        AFN copiaAFN = copiarAFN(afnOriginal);
+        copiaAFN.aplicarClausuraKleene();
+
+        String nombreResultado = nombre + "_kleene";
+        automatas.put(nombreResultado, copiaAFN);
+
+        String salidaDot = "archivos_dot/" + nombreResultado + ".dot";
+        String salidaPng = "automatas_png/" + nombreResultado + ".png";
+        DotExporter.escribirAFN(copiaAFN, salidaDot, nombreResultado);
+        GraphvizExporter.generarImagen(salidaDot, salidaPng);
+
+        System.out.println("✅ Clausura de Kleene aplicada. Resultado guardado como: " + nombreResultado);
+        pausar();
+    }
+
+    // Une dos AFNs usando un nuevo estado inicial y transiciones lambda
+    private static void unirAFNs() throws IOException, InterruptedException {
         if (automatas.size() < 2) {
             System.out.println("Se requieren al menos dos AFNs cargados.");
             pausar();
@@ -157,100 +317,26 @@ public class Main {
             return;
         }
 
-        // Crear una copia profunda del segundo AFN para evitar modificar el original
-        AFN copiaAFN2 = copiarAFN(afn2); // Necesitas tener o implementar este método
+        // Crear copias para no alterar los originales
+        AFN copiaAFN1 = copiarAFN(afn1);
+        AFN copiaAFN2 = copiarAFN(afn2);
 
-        // Concatenar directamente usando el método de la clase AFN
-        afn1.concatenarAFN(copiaAFN2);
+        // Aplicar unión
+        copiaAFN1.unirCon(copiaAFN2);
 
-        // Guardar el resultado con nuevo nombre
-        String nombreResultado = nombre1 + "_concat_" + nombre2;
-        automatas.put(nombreResultado, afn1); // ahora afn1 contiene el autómata resultante
+        String nombreResultado = nombre1 + "_union_" + nombre2;
+        automatas.put(nombreResultado, copiaAFN1);
 
         String salidaDot = "archivos_dot/" + nombreResultado + ".dot";
         String salidaPng = "automatas_png/" + nombreResultado + ".png";
-
-        DotExporter.escribirAFN(afn1, salidaDot, nombreResultado);
+        DotExporter.escribirAFN(copiaAFN1, salidaDot, nombreResultado);
         GraphvizExporter.generarImagen(salidaDot, salidaPng);
 
-        System.out.println("AFN concatenado generado como: " + nombreResultado);
+        System.out.println("AFN de unión generado como: " + nombreResultado);
         pausar();
     }
 
-    private static AFN copiarAFN(AFN original) {
-        AFN copia = new AFN();
-        Map<Estado, Estado> mapeo = new HashMap<>();
-
-        // 1. Copiar estados manteniendo los mismos IDs
-        for (Estado est : original.estados) {
-            Estado nuevo = new Estado(est.id);  // Mantener mismo ID
-            mapeo.put(est, nuevo);
-            copia.estados.add(nuevo);
-
-            if (est.equals(original.estadoInicial)) {
-                copia.estadoInicial = nuevo;
-            }
-        }
-
-        // 2. Copiar estados finales
-        for (Estado ef : original.estadosFinales) {
-            copia.estadosFinales.add(mapeo.get(ef));
-        }
-
-        // 3. Copiar transiciones
-        for (Transicion t : original.transiciones) {
-            Estado desde = mapeo.get(t.desde);
-            Estado hacia = mapeo.get(t.hacia);
-            copia.agregarTransicion(desde, t.simbolo, hacia);
-        }
-
-        // 4. Copiar alfabeto
-        copia.alfabeto.addAll(original.alfabeto);
-
-        return copia;
-    }
-    private static void convertirAFNaAFD() throws IOException, InterruptedException {
-        if (automatas.isEmpty()) {
-            System.out.println("No hay AFNs cargados.");
-            pausar();
-            return;
-        }
-
-        System.out.println("AFNs disponibles:");
-        for (String nombre : automatas.keySet()) {
-            System.out.println("- " + nombre);
-        }
-
-        System.out.print("Nombre del AFN a convertir: ");
-        String nombre = scanner.nextLine();
-        AFN afn = automatas.get(nombre);
-
-        if (afn == null) {
-            System.out.println("No existe ese AFN.");
-            pausar();
-            return;
-        }
-
-        AFD afd = afn.convertirADeterminista();
-        System.out.println("Estado Inicial(MAIN): " + afd.estadoInicial);
-        System.out.println("Estados(MAIN): " + afd.estados);
-        System.out.println("Transiciones(MAIN): " + afd.transiciones);
-        System.out.println("Estados finales(MAIN): " + afd.estadosFinales);
-        String nombreAFD = nombre + "_AFD";
-        String salidaDot = "archivos_dot/" + nombreAFD + ".dot";
-        String salidaPng = "automatas_png/" + nombreAFD + ".png";
-
-        DotExporter.escribirAFD(afd, salidaDot, nombreAFD);
-        GraphvizExporter.generarImagen(salidaDot, salidaPng);
-
-        System.out.println("✅ AFD generado como: " + nombreAFD);
-        System.out.println("   DOT: " + salidaDot);
-        System.out.println("   PNG: " + salidaPng);
-        pausar();
-    }
-
-
-
+    // Simula limpieza de pantalla (console clear)
     private static void limpiarPantalla() {
         for (int i = 0; i < 50; i++) System.out.println();
     }

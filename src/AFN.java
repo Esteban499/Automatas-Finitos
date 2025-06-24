@@ -1,17 +1,30 @@
 import java.util.*;
 import java.util.stream.Collectors;
 
+// Clase que representa un Autómata Finito No Determinista (AFN)
 public class AFN {
+
+    // Estado inicial del AFN
     public Estado estadoInicial;
+
+    // Conjunto de estados finales
     public Set<Estado> estadosFinales = new HashSet<>();
+
+    // Lista de transiciones del autómata
     public List<Transicion> transiciones = new ArrayList<>();
+
+    // Conjunto de todos los estados del autómata
     public Set<Estado> estados = new HashSet<>();
+
+    // Alfabeto (símbolos válidos)
     public Set<String> alfabeto = new HashSet<>();
 
+    // Agrega un estado al conjunto de estados
     public void agregarEstado(Estado estado) {
         estados.add(estado);
     }
 
+    // Agrega una transición al autómata
     public void agregarTransicion(Estado desde, String simbolo, Estado hacia) {
         transiciones.add(new Transicion(desde, simbolo, hacia));
         estados.add(desde);
@@ -19,21 +32,24 @@ public class AFN {
         alfabeto.add(simbolo);
     }
 
+    // Marca un estado como final
     public void agregarEstadoFinal(Estado estado) {
         estadosFinales.add(estado);
     }
 
+    // Establece el estado inicial del autómata
     public void setEstadoInicial(Estado estado) {
         estadoInicial = estado;
         estados.add(estado);
     }
 
+    // Concatena este AFN con otro
     public void concatenarAFN(AFN otro) {
-        // Paso 1: Renombrar los estados del segundo AFN con un offset
+        // Paso 1: Renombrar los estados del segundo AFN para evitar colisiones de ID
         int offset = this.obtenerMaxIdEstado() + 1;
         otro.renombrarEstadosConOffset(offset);
 
-        // Paso 2: Agregar transiciones lambda desde los estados finales de este AFN al estado inicial del segundo
+        // Paso 2: Crear transiciones lambda desde cada estado final actual al estado inicial del otro AFN
         for (Estado final1 : this.estadosFinales) {
             this.agregarTransicion(final1, "_", otro.estadoInicial);
         }
@@ -43,23 +59,23 @@ public class AFN {
         this.transiciones.addAll(otro.transiciones);
         this.alfabeto.addAll(otro.alfabeto);
 
-        // Paso 4: Actualizar los estados finales (solo los del segundo AFN quedan como finales)
+        // Paso 4: Actualizar el conjunto de estados finales (se reemplazan por los del otro AFN)
         this.estadosFinales = new HashSet<>(otro.estadosFinales);
     }
 
+    // Renombra los estados sumando un offset a sus IDs (para evitar colisiones al unir AFNs)
     public void renombrarEstadosConOffset(int offset) {
         Map<Estado, Estado> nuevoEstadoMap = new HashMap<>();
         Set<Estado> nuevosEstados = new HashSet<>();
 
         for (Estado est : estados) {
-            // Crear nuevo estado con nuevo ID y nuevo nombre
             Estado nuevo = new Estado(est.id + offset);
-            nuevo.nombre = "q" + (est.id + offset);  // Actualizar el nombre
+            nuevo.nombre = "q" + (est.id + offset);
             nuevoEstadoMap.put(est, nuevo);
             nuevosEstados.add(nuevo);
         }
-        estados = nuevosEstados;
 
+        estados = nuevosEstados;
         estadoInicial = nuevoEstadoMap.get(estadoInicial);
 
         Set<Estado> nuevosFinales = new HashSet<>();
@@ -77,6 +93,7 @@ public class AFN {
         transiciones = nuevasTransiciones;
     }
 
+    // Devuelve el mayor ID entre todos los estados
     public int obtenerMaxIdEstado() {
         int max = -1;
         for (Estado e : estados) {
@@ -87,7 +104,7 @@ public class AFN {
         return max;
     }
 
-    //Agrega todos los estados y busca los estados a los que llegan las transiciones desde lambda
+    // Calcula el cierre lambda (ε-cierre) de un conjunto de estados
     public Set<Estado> cierreLambda(Set<Estado> estados) {
         Set<Estado> cierre = new HashSet<>(estados);
         Stack<Estado> pila = new Stack<>();
@@ -96,6 +113,7 @@ public class AFN {
         while (!pila.isEmpty()) {
             Estado e = pila.pop();
             for (Transicion t : transiciones) {
+                // Si hay una transición λ desde el estado actual a otro que aún no está en el cierre
                 if (t.desde.equals(e) && t.simbolo.equals("_") && !cierre.contains(t.hacia)) {
                     cierre.add(t.hacia);
                     pila.push(t.hacia);
@@ -106,6 +124,7 @@ public class AFN {
         return cierre;
     }
 
+    // Mueve desde un conjunto de estados mediante un símbolo específico
     public Set<Estado> mover(Set<Estado> estados, String simbolo) {
         Set<Estado> resultado = new HashSet<>();
         for (Estado e : estados) {
@@ -118,17 +137,17 @@ public class AFN {
         return resultado;
     }
 
+    // Convierte el AFN a un AFD usando el algoritmo de subconjuntos
     public AFD convertirADeterminista() {
-
         AFD afd = new AFD();
         Map<String, Estado> subconjuntoToEstado = new HashMap<>();
         Queue<Set<Integer>> pendientes = new LinkedList<>();
 
+        // Paso 1: Calcular el cierre lambda del estado inicial
         Set<Estado> cierreInicial = cierreLambda(Set.of(estadoInicial));
-        Set<Integer> conjuntoInicial = cierreInicial.stream()
-                .map(e -> e.id)
-                .collect(Collectors.toSet());
+        Set<Integer> conjuntoInicial = cierreInicial.stream().map(e -> e.id).collect(Collectors.toSet());
 
+        // Crear estado inicial del AFD
         String claveInicial = clave(conjuntoInicial);
         Estado estadoInicialAFD = new Estado(conjuntoInicial);
         afd.estadoInicial = estadoInicialAFD;
@@ -136,29 +155,27 @@ public class AFN {
         subconjuntoToEstado.put(claveInicial, estadoInicialAFD);
         pendientes.add(conjuntoInicial);
 
-        // Paso 2: Proceso de subconjuntos
+        // Paso 2: Proceso de construcción del AFD
         while (!pendientes.isEmpty()) {
-            Set<Integer> actual = pendientes.poll(); //¿Que hace el metodo poll?
+            Set<Integer> actual = pendientes.poll(); // poll() obtiene y elimina el primer elemento de la cola
             String claveActual = clave(actual);
             Estado estadoDesde = subconjuntoToEstado.get(claveActual);
 
             for (String simbolo : alfabeto) {
-                if (simbolo.equals("_")) continue;
+                if (simbolo.equals("_")) continue; // Ignorar transiciones lambda
 
-                // Mover y cerrar
+                // Mover y calcular cierre
                 Set<Estado> estadosActuales = obtenerEstadosPorIDs(actual);
                 Set<Estado> alcanzados = mover(estadosActuales, simbolo);
                 Set<Estado> cierreAlcanzados = cierreLambda(alcanzados);
-
-                Set<Integer> conjuntoAlcanzado = cierreAlcanzados.stream()
-                        .map(e -> e.id)
-                        .collect(Collectors.toSet());
+                Set<Integer> conjuntoAlcanzado = cierreAlcanzados.stream().map(e -> e.id).collect(Collectors.toSet());
 
                 if (conjuntoAlcanzado.isEmpty()) continue;
 
                 String claveAlcanzado = clave(conjuntoAlcanzado);
                 Estado estadoHacia = subconjuntoToEstado.get(claveAlcanzado);
 
+                // Si aún no se creó el estado, lo agregamos
                 if (estadoHacia == null) {
                     estadoHacia = new Estado(conjuntoAlcanzado);
                     subconjuntoToEstado.put(claveAlcanzado, estadoHacia);
@@ -166,15 +183,13 @@ public class AFN {
                     pendientes.add(conjuntoAlcanzado);
                 }
 
+                // Crear transición en el AFD
                 afd.transiciones.add(new Transicion(estadoDesde, simbolo, estadoHacia));
             }
         }
 
-        // Paso 3: Determinar estados finales
-        Set<Integer> idsFinales = estadosFinales.stream()
-                .map(e -> e.id)
-                .collect(Collectors.toSet());
-
+        // Paso 3: Determinar qué estados del AFD son finales
+        Set<Integer> idsFinales = estadosFinales.stream().map(e -> e.id).collect(Collectors.toSet());
         for (Estado estadoAFD : afd.estados) {
             for (Integer id : estadoAFD.conjunto) {
                 if (idsFinales.contains(id)) {
@@ -184,24 +199,78 @@ public class AFN {
             }
         }
 
-        // Paso 4: Alfabeto sin λ
+        // Paso 4: Copiar el alfabeto sin el símbolo de lambda
         afd.alfabeto.addAll(alfabeto);
         afd.alfabeto.remove("_");
 
         return afd;
     }
 
-    // Métodos auxiliares
+    // Crea una clave única para representar un conjunto de IDs de estados
     private String clave(Set<Integer> conjunto) {
-        return conjunto.stream()
-                .sorted()
-                .map(String::valueOf)
-                .collect(Collectors.joining(","));
+        return conjunto.stream().sorted().map(String::valueOf).collect(Collectors.joining(","));
     }
 
+    // Devuelve el conjunto de estados correspondiente a un conjunto de IDs
     private Set<Estado> obtenerEstadosPorIDs(Set<Integer> ids) {
-        return estados.stream()
-                .filter(e -> ids.contains(e.id))
-                .collect(Collectors.toSet());
+        return estados.stream().filter(e -> ids.contains(e.id)).collect(Collectors.toSet());
+    }
+
+    // Aplica la clausura de Kleene sobre este AFN
+    public void aplicarClausuraKleene() {
+        int offset = this.obtenerMaxIdEstado() + 1;
+        Estado nuevoInicial = new Estado(offset);
+        Estado nuevoFinal = new Estado(offset + 1);
+
+        // Conectar nuevo inicial con el inicial actual y con el nuevo final (lambda)
+        this.agregarTransicion(nuevoInicial, "_", this.estadoInicial);
+        this.agregarTransicion(nuevoInicial, "_", nuevoFinal);
+
+        // Conectar antiguos estados finales con el inicial y con el nuevo final (lambda)
+        for (Estado ef : this.estadosFinales) {
+            this.agregarTransicion(ef, "_", this.estadoInicial);
+            this.agregarTransicion(ef, "_", nuevoFinal);
+        }
+
+        // Establecer el nuevo estado inicial
+        this.setEstadoInicial(nuevoInicial);
+
+        // Actualizar estados finales
+        this.estadosFinales = new HashSet<>();
+        this.agregarEstadoFinal(nuevoFinal);
+    }
+
+    // Une este AFN con otro (operación de unión)
+    public void unirCon(AFN otro) {
+        // Paso 1: Renombrar los estados del otro AFN
+        int offset = this.obtenerMaxIdEstado() + 1;
+        otro.renombrarEstadosConOffset(offset);
+
+        // Paso 2: Crear nuevo estado inicial y final
+        int nuevoIdInicial = otro.obtenerMaxIdEstado() + 1;
+        Estado nuevoInicial = new Estado(nuevoIdInicial);
+        Estado nuevoFinal = new Estado(nuevoIdInicial + 1);
+
+        // Paso 3: Transiciones lambda desde el nuevo inicial a ambos AFNs
+        this.agregarTransicion(nuevoInicial, "_", this.estadoInicial);
+        this.agregarTransicion(nuevoInicial, "_", otro.estadoInicial);
+
+        // Paso 4: Transiciones lambda desde los finales de ambos AFNs al nuevo final
+        for (Estado ef : this.estadosFinales) {
+            this.agregarTransicion(ef, "_", nuevoFinal);
+        }
+        for (Estado ef : otro.estadosFinales) {
+            this.agregarTransicion(ef, "_", nuevoFinal);
+        }
+
+        // Paso 5: Unir componentes
+        this.estados.addAll(otro.estados);
+        this.transiciones.addAll(otro.transiciones);
+        this.alfabeto.addAll(otro.alfabeto);
+
+        // Paso 6: Establecer nuevos estados inicial y final
+        this.setEstadoInicial(nuevoInicial);
+        this.estadosFinales = new HashSet<>();
+        this.agregarEstadoFinal(nuevoFinal);
     }
 }
