@@ -8,4 +8,8 @@ public class Transicion {
         this.simbolo = simbolo;
         this.hacia = hacia;
     }
+    @Override
+    public String toString() {
+        return desde.id + " -> " + hacia.id + " [" + simbolo + "]";
+    }
 }

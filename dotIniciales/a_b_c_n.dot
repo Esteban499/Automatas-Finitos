@@ -1,0 +1,17 @@
+digraph a_b_c_n {
+    node [fontname="Helvetica,Arial,sans-serif"]
+    edge [fontname="Helvetica,Arial,sans-serif"]
+    rankdir=LR;
+    node [shape = doublecircle]; q2 q4;
+    node [shape = circle];
+    inic[shape=point];
+
+    inic -> q0;
+    q0 -> q1 [label = "a"];
+    q0 -> q3 [label = "_"];
+    q1 -> q2 [label = "b"];
+    q2 -> q2 [label = "a|b"];
+    q3 -> q4 [label = "c"];
+    q4 -> q4 [label = "a|c"];
+    q4 -> q2 [label = "_"];
+}

@@ -1,9 +1,5 @@
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class AFN {
     public Estado estadoInicial;
@@ -52,26 +48,26 @@ public class AFN {
     }
 
     public void renombrarEstadosConOffset(int offset) {
-        // Mapeo de estados antiguos a nuevos
         Map<Estado, Estado> nuevoEstadoMap = new HashMap<>();
+        Set<Estado> nuevosEstados = new HashSet<>();
 
-        // Crear nuevos estados renombrados
         for (Estado est : estados) {
+            // Crear nuevo estado con nuevo ID y nuevo nombre
             Estado nuevo = new Estado(est.id + offset);
+            nuevo.nombre = "q" + (est.id + offset);  // Actualizar el nombre
             nuevoEstadoMap.put(est, nuevo);
+            nuevosEstados.add(nuevo);
         }
+        estados = nuevosEstados;
 
-        // Reemplazar estado inicial
         estadoInicial = nuevoEstadoMap.get(estadoInicial);
 
-        // Reemplazar estados finales
         Set<Estado> nuevosFinales = new HashSet<>();
         for (Estado ef : estadosFinales) {
             nuevosFinales.add(nuevoEstadoMap.get(ef));
         }
         estadosFinales = nuevosFinales;
 
-        // Reemplazar transiciones
         List<Transicion> nuevasTransiciones = new ArrayList<>();
         for (Transicion t : transiciones) {
             Estado nuevoDesde = nuevoEstadoMap.get(t.desde);
@@ -79,9 +75,6 @@ public class AFN {
             nuevasTransiciones.add(new Transicion(nuevoDesde, t.simbolo, nuevoHacia));
         }
         transiciones = nuevasTransiciones;
-
-        // Reemplazar conjunto de estados
-        estados = new HashSet<>(nuevoEstadoMap.values());
     }
 
     public int obtenerMaxIdEstado() {
@@ -94,4 +87,121 @@ public class AFN {
         return max;
     }
 
+    //Agrega todos los estados y busca los estados a los que llegan las transiciones desde lambda
+    public Set<Estado> cierreLambda(Set<Estado> estados) {
+        Set<Estado> cierre = new HashSet<>(estados);
+        Stack<Estado> pila = new Stack<>();
+        pila.addAll(estados);
+
+        while (!pila.isEmpty()) {
+            Estado e = pila.pop();
+            for (Transicion t : transiciones) {
+                if (t.desde.equals(e) && t.simbolo.equals("_") && !cierre.contains(t.hacia)) {
+                    cierre.add(t.hacia);
+                    pila.push(t.hacia);
+                }
+            }
+        }
+
+        return cierre;
+    }
+
+    public Set<Estado> mover(Set<Estado> estados, String simbolo) {
+        Set<Estado> resultado = new HashSet<>();
+        for (Estado e : estados) {
+            for (Transicion t : transiciones) {
+                if (t.desde.equals(e) && t.simbolo.equals(simbolo)) {
+                    resultado.add(t.hacia);
+                }
+            }
+        }
+        return resultado;
+    }
+
+    public AFD convertirADeterminista() {
+
+        AFD afd = new AFD();
+        Map<String, Estado> subconjuntoToEstado = new HashMap<>();
+        Queue<Set<Integer>> pendientes = new LinkedList<>();
+
+        Set<Estado> cierreInicial = cierreLambda(Set.of(estadoInicial));
+        Set<Integer> conjuntoInicial = cierreInicial.stream()
+                .map(e -> e.id)
+                .collect(Collectors.toSet());
+
+        String claveInicial = clave(conjuntoInicial);
+        Estado estadoInicialAFD = new Estado(conjuntoInicial);
+        afd.estadoInicial = estadoInicialAFD;
+        afd.estados.add(estadoInicialAFD);
+        subconjuntoToEstado.put(claveInicial, estadoInicialAFD);
+        pendientes.add(conjuntoInicial);
+
+        // Paso 2: Proceso de subconjuntos
+        while (!pendientes.isEmpty()) {
+            Set<Integer> actual = pendientes.poll(); //¿Que hace el metodo poll?
+            String claveActual = clave(actual);
+            Estado estadoDesde = subconjuntoToEstado.get(claveActual);
+
+            for (String simbolo : alfabeto) {
+                if (simbolo.equals("_")) continue;
+
+                // Mover y cerrar
+                Set<Estado> estadosActuales = obtenerEstadosPorIDs(actual);
+                Set<Estado> alcanzados = mover(estadosActuales, simbolo);
+                Set<Estado> cierreAlcanzados = cierreLambda(alcanzados);
+
+                Set<Integer> conjuntoAlcanzado = cierreAlcanzados.stream()
+                        .map(e -> e.id)
+                        .collect(Collectors.toSet());
+
+                if (conjuntoAlcanzado.isEmpty()) continue;
+
+                String claveAlcanzado = clave(conjuntoAlcanzado);
+                Estado estadoHacia = subconjuntoToEstado.get(claveAlcanzado);
+
+                if (estadoHacia == null) {
+                    estadoHacia = new Estado(conjuntoAlcanzado);
+                    subconjuntoToEstado.put(claveAlcanzado, estadoHacia);
+                    afd.estados.add(estadoHacia);
+                    pendientes.add(conjuntoAlcanzado);
+                }
+
+                afd.transiciones.add(new Transicion(estadoDesde, simbolo, estadoHacia));
+            }
+        }
+
+        // Paso 3: Determinar estados finales
+        Set<Integer> idsFinales = estadosFinales.stream()
+                .map(e -> e.id)
+                .collect(Collectors.toSet());
+
+        for (Estado estadoAFD : afd.estados) {
+            for (Integer id : estadoAFD.conjunto) {
+                if (idsFinales.contains(id)) {
+                    afd.estadosFinales.add(estadoAFD);
+                    break;
+                }
+            }
+        }
+
+        // Paso 4: Alfabeto sin λ
+        afd.alfabeto.addAll(alfabeto);
+        afd.alfabeto.remove("_");
+
+        return afd;
+    }
+
+    // Métodos auxiliares
+    private String clave(Set<Integer> conjunto) {
+        return conjunto.stream()
+                .sorted()
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+    }
+
+    private Set<Estado> obtenerEstadosPorIDs(Set<Integer> ids) {
+        return estados.stream()
+                .filter(e -> ids.contains(e.id))
+                .collect(Collectors.toSet());
+    }
 }
